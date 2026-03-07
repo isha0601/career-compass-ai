@@ -30,7 +30,21 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function getEmbedding(text: string, apiKey: string, retries = 3): Promise<number[]> {
+function createDeterministicEmbedding(text: string): number[] {
+  const embedding = new Array(1536).fill(0);
+  for (let i = 0; i < text.length; i++) {
+    embedding[i % 1536] += text.charCodeAt(i) / 1000;
+  }
+
+  const magnitude = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0));
+  if (magnitude > 0) {
+    for (let i = 0; i < embedding.length; i++) embedding[i] /= magnitude;
+  }
+
+  return embedding;
+}
+
+async function extractDocumentKeywords(text: string, apiKey: string, retries = 5): Promise<string> {
   for (let attempt = 0; attempt < retries; attempt++) {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -43,41 +57,32 @@ async function getEmbedding(text: string, apiKey: string, retries = 3): Promise<
         messages: [
           {
             role: "system",
-            content: "Extract 10 key terms from this text, comma-separated. Only output the terms, nothing else.",
+            content: "Extract 20 key terms from this document, comma-separated. Only output the terms.",
           },
-          { role: "user", content: text.slice(0, 2000) },
+          { role: "user", content: text.slice(0, 6000) },
         ],
       }),
     });
 
     if (response.status === 429) {
-      const wait = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
-      console.log(`Rate limited on embedding attempt ${attempt + 1}, waiting ${wait}ms...`);
-      await response.text(); // consume body
+      const wait = Math.pow(2, attempt) * 2500;
+      console.log(`Rate limited while extracting document keywords (attempt ${attempt + 1}), waiting ${wait}ms...`);
+      await response.text();
       await sleep(wait);
       continue;
     }
 
     if (!response.ok) {
-      throw new Error(`Embedding generation failed: ${response.status}`);
+      throw new Error(`Keyword extraction failed: ${response.status}`);
     }
 
     const data = await response.json();
-    const keywords = data.choices?.[0]?.message?.content || "";
-
-    const combined = `${keywords} ${text.slice(0, 500)}`;
-    const embedding = new Array(1536).fill(0);
-    for (let i = 0; i < combined.length; i++) {
-      embedding[i % 1536] += combined.charCodeAt(i) / 1000;
-    }
-    const magnitude = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0));
-    if (magnitude > 0) {
-      for (let i = 0; i < embedding.length; i++) embedding[i] /= magnitude;
-    }
-    return embedding;
+    return data.choices?.[0]?.message?.content || "";
   }
-  throw new Error("Embedding generation failed: rate limited after retries");
+
+  throw new Error("Keyword extraction failed: rate limited after retries");
 }
+
 
 
 serve(async (req) => {
