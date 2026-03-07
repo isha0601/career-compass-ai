@@ -92,6 +92,15 @@ const Index = () => {
               <BookOpen className="w-4 h-4 mr-2" />
               Knowledge Base
             </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 font-display px-8 text-base"
+              onClick={() => navigate("/resume-analyzer")}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Resume Analyzer
+            </Button>
           </div>
         </div>
       </header>
