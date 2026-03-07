@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import ProfileSetup from "./pages/ProfileSetup";
 import ChatPage from "./pages/ChatPage";
 import KnowledgeBase from "./pages/KnowledgeBase";
+import ResumeAnalyzer from "./pages/ResumeAnalyzer";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/profile" element={<ProfileSetup />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/knowledge-base" element={<KnowledgeBase />} />
+          <Route path="/resume-analyzer" element={<ResumeAnalyzer />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
