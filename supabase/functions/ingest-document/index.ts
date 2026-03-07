@@ -139,7 +139,8 @@ serve(async (req) => {
       const chunkContent = chunks[i];
       const pineconeId = `${documentId}_chunk_${i}`;
 
-      // Generate embedding
+      // Generate embedding with delay to avoid rate limits
+      if (i > 0) await sleep(1500); // 1.5s between requests
       const embedding = await getEmbedding(chunkContent, lovableApiKey);
 
       pineconeVectors.push({
