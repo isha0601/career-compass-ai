@@ -90,8 +90,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let documentId: string | undefined;
+
   try {
-    const { documentId, filePath, fileName, docType, metadata } = await req.json();
+    const payload = await req.json();
+    documentId = payload?.documentId;
+    const { filePath, fileName, docType, metadata } = payload;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
