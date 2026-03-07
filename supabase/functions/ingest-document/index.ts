@@ -26,31 +26,41 @@ function chunkText(text: string, maxTokens = 500): string[] {
   return chunks;
 }
 
-async function getEmbedding(text: string, apiKey: string): Promise<number[]> {
-  // Use Lovable AI to generate a compact summary, then create a simple hash-based embedding
-  // For production, use a dedicated embedding model. Here we use Gemini to create a semantic summary
-  // and then query Pinecone with text search.
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash-lite",
-      messages: [
-        {
-          role: "system",
-          content: "Extract 10 key terms from this text, comma-separated. Only output the terms, nothing else.",
-        },
-        { role: "user", content: text.slice(0, 2000) },
-      ],
-    }),
-  });
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  if (!response.ok) {
-    throw new Error(`Embedding generation failed: ${response.status}`);
-  }
+async function getEmbedding(text: string, apiKey: string, retries = 3): Promise<number[]> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          {
+            role: "system",
+            content: "Extract 10 key terms from this text, comma-separated. Only output the terms, nothing else.",
+          },
+          { role: "user", content: text.slice(0, 2000) },
+        ],
+      }),
+    });
+
+    if (response.status === 429) {
+      const wait = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
+      console.log(`Rate limited on embedding attempt ${attempt + 1}, waiting ${wait}ms...`);
+      await response.text(); // consume body
+      await sleep(wait);
+      continue;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Embedding generation failed: ${response.status}`);
+    }
 
   const data = await response.json();
   const keywords = data.choices?.[0]?.message?.content || "";
