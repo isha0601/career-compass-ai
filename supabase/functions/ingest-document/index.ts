@@ -31,9 +31,9 @@ function sleep(ms: number) {
 }
 
 function createDeterministicEmbedding(text: string): number[] {
-  const embedding = new Array(1536).fill(0);
+  const embedding = new Array(1024).fill(0);
   for (let i = 0; i < text.length; i++) {
-    embedding[i % 1536] += text.charCodeAt(i) / 1000;
+    embedding[i % 1024] += text.charCodeAt(i) / 1000;
   }
 
   const magnitude = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0));
