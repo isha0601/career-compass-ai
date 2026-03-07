@@ -26,49 +26,59 @@ function chunkText(text: string, maxTokens = 500): string[] {
   return chunks;
 }
 
-async function getEmbedding(text: string, apiKey: string): Promise<number[]> {
-  // Use Lovable AI to generate a compact summary, then create a simple hash-based embedding
-  // For production, use a dedicated embedding model. Here we use Gemini to create a semantic summary
-  // and then query Pinecone with text search.
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash-lite",
-      messages: [
-        {
-          role: "system",
-          content: "Extract 10 key terms from this text, comma-separated. Only output the terms, nothing else.",
-        },
-        { role: "user", content: text.slice(0, 2000) },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Embedding generation failed: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const keywords = data.choices?.[0]?.message?.content || "";
-
-  // Create a deterministic 1536-dim embedding from text content
-  // This is a simplified approach - for production use a real embedding API
-  const combined = `${keywords} ${text.slice(0, 500)}`;
-  const embedding = new Array(1536).fill(0);
-  for (let i = 0; i < combined.length; i++) {
-    embedding[i % 1536] += combined.charCodeAt(i) / 1000;
-  }
-  // Normalize
-  const magnitude = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0));
-  if (magnitude > 0) {
-    for (let i = 0; i < embedding.length; i++) embedding[i] /= magnitude;
-  }
-  return embedding;
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+async function getEmbedding(text: string, apiKey: string, retries = 3): Promise<number[]> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          {
+            role: "system",
+            content: "Extract 10 key terms from this text, comma-separated. Only output the terms, nothing else.",
+          },
+          { role: "user", content: text.slice(0, 2000) },
+        ],
+      }),
+    });
+
+    if (response.status === 429) {
+      const wait = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
+      console.log(`Rate limited on embedding attempt ${attempt + 1}, waiting ${wait}ms...`);
+      await response.text(); // consume body
+      await sleep(wait);
+      continue;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Embedding generation failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const keywords = data.choices?.[0]?.message?.content || "";
+
+    const combined = `${keywords} ${text.slice(0, 500)}`;
+    const embedding = new Array(1536).fill(0);
+    for (let i = 0; i < combined.length; i++) {
+      embedding[i % 1536] += combined.charCodeAt(i) / 1000;
+    }
+    const magnitude = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0));
+    if (magnitude > 0) {
+      for (let i = 0; i < embedding.length; i++) embedding[i] /= magnitude;
+    }
+    return embedding;
+  }
+  throw new Error("Embedding generation failed: rate limited after retries");
+
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -129,7 +139,8 @@ serve(async (req) => {
       const chunkContent = chunks[i];
       const pineconeId = `${documentId}_chunk_${i}`;
 
-      // Generate embedding
+      // Generate embedding with delay to avoid rate limits
+      if (i > 0) await sleep(1500); // 1.5s between requests
       const embedding = await getEmbedding(chunkContent, lovableApiKey);
 
       pineconeVectors.push({
