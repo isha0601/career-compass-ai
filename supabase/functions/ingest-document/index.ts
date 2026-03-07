@@ -77,18 +77,8 @@ async function getEmbedding(text: string, apiKey: string, retries = 3): Promise<
     return embedding;
   }
   throw new Error("Embedding generation failed: rate limited after retries");
-}
-  const embedding = new Array(1536).fill(0);
-  for (let i = 0; i < combined.length; i++) {
-    embedding[i % 1536] += combined.charCodeAt(i) / 1000;
-  }
-  // Normalize
-  const magnitude = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0));
-  if (magnitude > 0) {
-    for (let i = 0; i < embedding.length; i++) embedding[i] /= magnitude;
-  }
-  return embedding;
-}
+
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
