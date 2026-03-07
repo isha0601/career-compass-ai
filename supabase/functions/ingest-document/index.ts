@@ -30,7 +30,21 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function getEmbedding(text: string, apiKey: string, retries = 3): Promise<number[]> {
+function createDeterministicEmbedding(text: string): number[] {
+  const embedding = new Array(1024).fill(0);
+  for (let i = 0; i < text.length; i++) {
+    embedding[i % 1024] += text.charCodeAt(i) / 1000;
+  }
+
+  const magnitude = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0));
+  if (magnitude > 0) {
+    for (let i = 0; i < embedding.length; i++) embedding[i] /= magnitude;
+  }
+
+  return embedding;
+}
+
+async function extractDocumentKeywords(text: string, apiKey: string, retries = 5): Promise<string> {
   for (let attempt = 0; attempt < retries; attempt++) {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -43,41 +57,32 @@ async function getEmbedding(text: string, apiKey: string, retries = 3): Promise<
         messages: [
           {
             role: "system",
-            content: "Extract 10 key terms from this text, comma-separated. Only output the terms, nothing else.",
+            content: "Extract 20 key terms from this document, comma-separated. Only output the terms.",
           },
-          { role: "user", content: text.slice(0, 2000) },
+          { role: "user", content: text.slice(0, 6000) },
         ],
       }),
     });
 
     if (response.status === 429) {
-      const wait = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
-      console.log(`Rate limited on embedding attempt ${attempt + 1}, waiting ${wait}ms...`);
-      await response.text(); // consume body
+      const wait = Math.pow(2, attempt) * 2500;
+      console.log(`Rate limited while extracting document keywords (attempt ${attempt + 1}), waiting ${wait}ms...`);
+      await response.text();
       await sleep(wait);
       continue;
     }
 
     if (!response.ok) {
-      throw new Error(`Embedding generation failed: ${response.status}`);
+      throw new Error(`Keyword extraction failed: ${response.status}`);
     }
 
     const data = await response.json();
-    const keywords = data.choices?.[0]?.message?.content || "";
-
-    const combined = `${keywords} ${text.slice(0, 500)}`;
-    const embedding = new Array(1536).fill(0);
-    for (let i = 0; i < combined.length; i++) {
-      embedding[i % 1536] += combined.charCodeAt(i) / 1000;
-    }
-    const magnitude = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0));
-    if (magnitude > 0) {
-      for (let i = 0; i < embedding.length; i++) embedding[i] /= magnitude;
-    }
-    return embedding;
+    return data.choices?.[0]?.message?.content || "";
   }
-  throw new Error("Embedding generation failed: rate limited after retries");
+
+  throw new Error("Keyword extraction failed: rate limited after retries");
 }
+
 
 
 serve(async (req) => {
@@ -85,8 +90,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let documentId: string | undefined;
+
   try {
-    const { documentId, filePath, fileName, docType, metadata } = await req.json();
+    const payload = await req.json();
+    documentId = payload?.documentId;
+    const { filePath, fileName, docType, metadata } = payload;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -131,6 +140,9 @@ serve(async (req) => {
     const chunks = chunkText(textContent);
     console.log(`Split into ${chunks.length} chunks`);
 
+    // Extract keywords ONCE per document, then build deterministic chunk embeddings
+    const documentKeywords = await extractDocumentKeywords(textContent, lovableApiKey);
+
     // Process each chunk: embed and store
     const pineconeVectors: any[] = [];
     const chunkRecords: any[] = [];
@@ -138,10 +150,8 @@ serve(async (req) => {
     for (let i = 0; i < chunks.length; i++) {
       const chunkContent = chunks[i];
       const pineconeId = `${documentId}_chunk_${i}`;
-
-      // Generate embedding with delay to avoid rate limits
-      if (i > 0) await sleep(1500); // 1.5s between requests
-      const embedding = await getEmbedding(chunkContent, lovableApiKey);
+      const combinedForEmbedding = `${documentKeywords} ${chunkContent.slice(0, 700)}`;
+      const embedding = createDeterministicEmbedding(combinedForEmbedding);
 
       pineconeVectors.push({
         id: pineconeId,
@@ -207,7 +217,6 @@ serve(async (req) => {
 
     // Try to update document status to failed
     try {
-      const { documentId } = await req.clone().json();
       if (documentId) {
         const supabase = createClient(
           Deno.env.get("SUPABASE_URL")!,

@@ -51,9 +51,9 @@ async function getQueryEmbedding(text: string, apiKey: string): Promise<number[]
   const data = await response.json();
   const keywords = data.choices?.[0]?.message?.content || "";
   const combined = `${keywords} ${text.slice(0, 500)}`;
-  const embedding = new Array(1536).fill(0);
+  const embedding = new Array(1024).fill(0);
   for (let i = 0; i < combined.length; i++) {
-    embedding[i % 1536] += combined.charCodeAt(i) / 1000;
+    embedding[i % 1024] += combined.charCodeAt(i) / 1000;
   }
   const magnitude = Math.sqrt(embedding.reduce((s: number, v: number) => s + v * v, 0));
   if (magnitude > 0) {
