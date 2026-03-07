@@ -217,7 +217,6 @@ serve(async (req) => {
 
     // Try to update document status to failed
     try {
-      const { documentId } = await req.clone().json();
       if (documentId) {
         const supabase = createClient(
           Deno.env.get("SUPABASE_URL")!,
