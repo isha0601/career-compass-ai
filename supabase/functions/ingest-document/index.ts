@@ -77,7 +77,7 @@ async function getEmbedding(text: string, apiKey: string, retries = 3): Promise<
     return embedding;
   }
   throw new Error("Embedding generation failed: rate limited after retries");
-
+}
 
 
 serve(async (req) => {
