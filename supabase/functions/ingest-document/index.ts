@@ -140,6 +140,9 @@ serve(async (req) => {
     const chunks = chunkText(textContent);
     console.log(`Split into ${chunks.length} chunks`);
 
+    // Extract keywords ONCE per document, then build deterministic chunk embeddings
+    const documentKeywords = await extractDocumentKeywords(textContent, lovableApiKey);
+
     // Process each chunk: embed and store
     const pineconeVectors: any[] = [];
     const chunkRecords: any[] = [];
@@ -147,10 +150,8 @@ serve(async (req) => {
     for (let i = 0; i < chunks.length; i++) {
       const chunkContent = chunks[i];
       const pineconeId = `${documentId}_chunk_${i}`;
-
-      // Generate embedding with delay to avoid rate limits
-      if (i > 0) await sleep(1500); // 1.5s between requests
-      const embedding = await getEmbedding(chunkContent, lovableApiKey);
+      const combinedForEmbedding = `${documentKeywords} ${chunkContent.slice(0, 700)}`;
+      const embedding = createDeterministicEmbedding(combinedForEmbedding);
 
       pineconeVectors.push({
         id: pineconeId,
