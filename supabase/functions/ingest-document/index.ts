@@ -62,12 +62,22 @@ async function getEmbedding(text: string, apiKey: string, retries = 3): Promise<
       throw new Error(`Embedding generation failed: ${response.status}`);
     }
 
-  const data = await response.json();
-  const keywords = data.choices?.[0]?.message?.content || "";
+    const data = await response.json();
+    const keywords = data.choices?.[0]?.message?.content || "";
 
-  // Create a deterministic 1536-dim embedding from text content
-  // This is a simplified approach - for production use a real embedding API
-  const combined = `${keywords} ${text.slice(0, 500)}`;
+    const combined = `${keywords} ${text.slice(0, 500)}`;
+    const embedding = new Array(1536).fill(0);
+    for (let i = 0; i < combined.length; i++) {
+      embedding[i % 1536] += combined.charCodeAt(i) / 1000;
+    }
+    const magnitude = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0));
+    if (magnitude > 0) {
+      for (let i = 0; i < embedding.length; i++) embedding[i] /= magnitude;
+    }
+    return embedding;
+  }
+  throw new Error("Embedding generation failed: rate limited after retries");
+}
   const embedding = new Array(1536).fill(0);
   for (let i = 0; i < combined.length; i++) {
     embedding[i % 1536] += combined.charCodeAt(i) / 1000;
