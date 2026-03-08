@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -95,30 +95,42 @@ const ResumeAnalyzer = () => {
     if (selected) setFile(selected);
   };
 
+  const extractTextFromPdf = async (pdfFile: File): Promise<string> => {
+    const pdfjsLib = await import("pdfjs-dist");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs`;
+
+    const arrayBuffer = await pdfFile.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pages: string[] = [];
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      pages.push(content.items.map((item: any) => item.str).join(" "));
+    }
+
+    return pages.join("\n\n");
+  };
+
   const analyzeResume = async () => {
     if (!file) return;
     setAnalyzing(true);
     setAnalysis(null);
 
     try {
-      // Upload file to storage
-      const filePath = `resumes/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("career-documents")
-        .upload(filePath, file, { cacheControl: "3600" });
+      // Extract text client-side
+      let resumeText = "";
+      if (file.type === "application/pdf") {
+        resumeText = await extractTextFromPdf(file);
+      } else {
+        resumeText = await file.text();
+      }
 
-      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+      if (!resumeText || resumeText.trim().length < 20) {
+        throw new Error("Could not extract enough text from the file. Please try a different format.");
+      }
 
-      // Create document record
-      const { data: doc, error: docError } = await supabase
-        .from("career_documents")
-        .insert({ file_name: file.name, file_path: filePath, doc_type: "resume", status: "analyzing" })
-        .select()
-        .single();
-
-      if (docError) throw docError;
-
-      // Call analyze edge function
+      // Call analyze edge function with extracted text directly
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-resume`,
         {
@@ -127,7 +139,7 @@ const ResumeAnalyzer = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ documentId: doc.id, targetRole: targetRole || undefined }),
+          body: JSON.stringify({ resumeText, targetRole: targetRole || undefined }),
         }
       );
 
