@@ -9,6 +9,7 @@ import ChatPage from "./pages/ChatPage";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import ResumeAnalyzer from "./pages/ResumeAnalyzer";
 import CoverLetterGenerator from "./pages/CoverLetterGenerator";
+import SkillQuiz from "./pages/SkillQuiz";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
