@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.ingest-document]
 verify_jwt = false
+
+[functions.mock-interview]
+verify_jwt = false

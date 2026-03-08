@@ -119,6 +119,15 @@ const Index = () => {
               <Brain className="w-4 h-4 mr-2" />
               Skill Quiz
             </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 font-display px-8 text-base"
+              onClick={() => navigate("/mock-interview")}
+            >
+              <Mic className="w-4 h-4 mr-2" />
+              Mock Interview
+            </Button>
           </div>
         </div>
       </header>

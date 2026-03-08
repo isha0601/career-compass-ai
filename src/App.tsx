@@ -29,6 +29,7 @@ const App = () => (
           <Route path="/resume-analyzer" element={<ResumeAnalyzer />} />
           <Route path="/cover-letter" element={<CoverLetterGenerator />} />
           <Route path="/skill-quiz" element={<SkillQuiz />} />
+          <Route path="/mock-interview" element={<MockInterview />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
