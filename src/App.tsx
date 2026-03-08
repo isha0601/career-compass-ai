@@ -10,6 +10,7 @@ import KnowledgeBase from "./pages/KnowledgeBase";
 import ResumeAnalyzer from "./pages/ResumeAnalyzer";
 import CoverLetterGenerator from "./pages/CoverLetterGenerator";
 import SkillQuiz from "./pages/SkillQuiz";
+import MockInterview from "./pages/MockInterview";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/resume-analyzer" element={<ResumeAnalyzer />} />
           <Route path="/cover-letter" element={<CoverLetterGenerator />} />
           <Route path="/skill-quiz" element={<SkillQuiz />} />
+          <Route path="/mock-interview" element={<MockInterview />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
