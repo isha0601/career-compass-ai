@@ -8,6 +8,7 @@ import ProfileSetup from "./pages/ProfileSetup";
 import ChatPage from "./pages/ChatPage";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import ResumeAnalyzer from "./pages/ResumeAnalyzer";
+import CoverLetterGenerator from "./pages/CoverLetterGenerator";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
