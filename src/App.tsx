@@ -27,6 +27,7 @@ const App = () => (
           <Route path="/knowledge-base" element={<KnowledgeBase />} />
           <Route path="/resume-analyzer" element={<ResumeAnalyzer />} />
           <Route path="/cover-letter" element={<CoverLetterGenerator />} />
+          <Route path="/skill-quiz" element={<SkillQuiz />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
