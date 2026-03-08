@@ -95,42 +95,50 @@ const ResumeAnalyzer = () => {
     if (selected) setFile(selected);
   };
 
-  const extractTextFromPdf = async (pdfFile: File): Promise<string> => {
-    const pdfjsLib = await import("pdfjs-dist");
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs`;
-
-    const arrayBuffer = await pdfFile.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const pages: string[] = [];
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      pages.push(content.items.map((item: any) => item.str).join(" "));
-    }
-
-    return pages.join("\n\n");
-  };
-
   const analyzeResume = async () => {
     if (!file) return;
     setAnalyzing(true);
     setAnalysis(null);
 
     try {
-      // Extract text client-side
       let resumeText = "";
+
       if (file.type === "application/pdf") {
-        resumeText = await extractTextFromPdf(file);
+        // Send PDF as base64 to edge function for server-side parsing
+        const arrayBuffer = await file.arrayBuffer();
+        const base64 = btoa(
+          new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
+        );
+
+        const resp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-resume`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ pdfBase64: base64, targetRole: targetRole || undefined }),
+          }
+        );
+
+        if (!resp.ok) {
+          const errData = await resp.json();
+          throw new Error(errData.error || "Analysis failed");
+        }
+
+        const result = await resp.json();
+        setAnalysis(result.analysis);
+        toast.success("Resume analysis complete!");
+        return;
       } else {
         resumeText = await file.text();
       }
 
       if (!resumeText || resumeText.trim().length < 20) {
-        throw new Error("Could not extract enough text from the file. Please try a different format.");
+        throw new Error("Could not extract enough text from the file.");
       }
 
-      // Call analyze edge function with extracted text directly
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-resume`,
         {
