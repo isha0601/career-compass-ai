@@ -25,11 +25,52 @@ serve(async (req) => {
   }
 
   try {
-    const { documentId, targetRole, resumeText: directText } = await req.json();
+    const { documentId, targetRole, resumeText: directText, pdfBase64 } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     let resumeText = directText || "";
+
+    // Handle base64 PDF: decode and extract text
+    if (pdfBase64 && !resumeText) {
+      const binaryStr = atob(pdfBase64);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      // Extract readable text from PDF binary
+      const raw = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+      // Extract text between BT/ET blocks (PDF text objects)
+      const textBlocks: string[] = [];
+      const btEtRegex = /BT\s([\s\S]*?)ET/g;
+      let match;
+      while ((match = btEtRegex.exec(raw)) !== null) {
+        const block = match[1];
+        // Extract strings in parentheses (Tj/TJ operators)
+        const strRegex = /\(([^)]*)\)/g;
+        let strMatch;
+        while ((strMatch = strRegex.exec(block)) !== null) {
+          const cleaned = strMatch[1].replace(/\\([nrt\\()])/g, (_, c) => {
+            const map: Record<string, string> = { n: "\n", r: "\r", t: "\t", "\\": "\\", "(": "(", ")": ")" };
+            return map[c] || c;
+          });
+          if (cleaned.trim()) textBlocks.push(cleaned.trim());
+        }
+      }
+      resumeText = textBlocks.join(" ").replace(/\s+/g, " ").trim();
+
+      // Fallback: try extracting any readable strings
+      if (resumeText.length < 50) {
+        const fallbackStrings: string[] = [];
+        const fallbackRegex = /\(([A-Za-z0-9@.,;:!?/\-_ ]{2,})\)/g;
+        while ((match = fallbackRegex.exec(raw)) !== null) {
+          fallbackStrings.push(match[1].trim());
+        }
+        if (fallbackStrings.join(" ").length > resumeText.length) {
+          resumeText = fallbackStrings.join(" ").replace(/\s+/g, " ").trim();
+        }
+      }
+    }
 
     // If documentId provided, fetch from storage
     if (documentId && !resumeText) {
@@ -53,9 +94,6 @@ serve(async (req) => {
       if (downloadError || !fileData) throw new Error("Failed to download file");
 
       resumeText = await fileData.text();
-      if (doc.file_name.endsWith(".pdf")) {
-        resumeText = resumeText.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ").trim();
-      }
     }
 
     if (!resumeText || resumeText.length < 20) {
