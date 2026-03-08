@@ -10,6 +10,7 @@ import KnowledgeBase from "./pages/KnowledgeBase";
 import ResumeAnalyzer from "./pages/ResumeAnalyzer";
 import CoverLetterGenerator from "./pages/CoverLetterGenerator";
 import SkillQuiz from "./pages/SkillQuiz";
+import MockInterview from "./pages/MockInterview";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
