@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Target, Sparkles, ArrowRight, BookOpen, TrendingUp, Users, FileText } from "lucide-react";
+import { Target, Sparkles, ArrowRight, BookOpen, TrendingUp, Users, FileText, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const features = [
@@ -100,6 +100,15 @@ const Index = () => {
             >
               <FileText className="w-4 h-4 mr-2" />
               Resume Analyzer
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 font-display px-8 text-base"
+              onClick={() => navigate("/cover-letter")}
+            >
+              <Briefcase className="w-4 h-4 mr-2" />
+              Cover Letter
             </Button>
           </div>
         </div>
