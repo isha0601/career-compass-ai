@@ -25,84 +25,36 @@ serve(async (req) => {
   }
 
   try {
-    const { documentId, targetRole, resumeText: directText, pdfBase64 } = await req.json();
+    const { targetRole, resumeText: directText, pdfBase64 } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    let resumeText = directText || "";
+    // Build message content - either multimodal (PDF) or text
+    let userContent: any;
 
-    // Handle base64 PDF: decode and extract text
-    if (pdfBase64 && !resumeText) {
-      const binaryStr = atob(pdfBase64);
-      const bytes = new Uint8Array(binaryStr.length);
-      for (let i = 0; i < binaryStr.length; i++) {
-        bytes[i] = binaryStr.charCodeAt(i);
-      }
-      // Extract readable text from PDF binary
-      const raw = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-      // Extract text between BT/ET blocks (PDF text objects)
-      const textBlocks: string[] = [];
-      const btEtRegex = /BT\s([\s\S]*?)ET/g;
-      let match;
-      while ((match = btEtRegex.exec(raw)) !== null) {
-        const block = match[1];
-        // Extract strings in parentheses (Tj/TJ operators)
-        const strRegex = /\(([^)]*)\)/g;
-        let strMatch;
-        while ((strMatch = strRegex.exec(block)) !== null) {
-          const cleaned = strMatch[1].replace(/\\([nrt\\()])/g, (_, c) => {
-            const map: Record<string, string> = { n: "\n", r: "\r", t: "\t", "\\": "\\", "(": "(", ")": ")" };
-            return map[c] || c;
-          });
-          if (cleaned.trim()) textBlocks.push(cleaned.trim());
-        }
-      }
-      resumeText = textBlocks.join(" ").replace(/\s+/g, " ").trim();
+    if (pdfBase64) {
+      // Send PDF directly to Gemini as multimodal input
+      const roleContext = targetRole
+        ? `Analyze this resume for the target role: "${targetRole}"`
+        : "Analyze this resume thoroughly.";
 
-      // Fallback: try extracting any readable strings
-      if (resumeText.length < 50) {
-        const fallbackStrings: string[] = [];
-        const fallbackRegex = /\(([A-Za-z0-9@.,;:!?/\-_ ]{2,})\)/g;
-        while ((match = fallbackRegex.exec(raw)) !== null) {
-          fallbackStrings.push(match[1].trim());
-        }
-        if (fallbackStrings.join(" ").length > resumeText.length) {
-          resumeText = fallbackStrings.join(" ").replace(/\s+/g, " ").trim();
-        }
-      }
+      userContent = [
+        { type: "text", text: roleContext },
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:application/pdf;base64,${pdfBase64}`,
+          },
+        },
+      ];
+    } else if (directText && directText.length >= 20) {
+      const userPrompt = targetRole
+        ? `Analyze this resume for the target role: "${targetRole}"\n\nResume:\n${directText.slice(0, 8000)}`
+        : `Analyze this resume:\n\n${directText.slice(0, 8000)}`;
+      userContent = userPrompt;
+    } else {
+      throw new Error("No resume content provided. Please upload a PDF or text file.");
     }
-
-    // If documentId provided, fetch from storage
-    if (documentId && !resumeText) {
-      const supabase = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
-
-      const { data: doc } = await supabase
-        .from("career_documents")
-        .select("file_path, file_name")
-        .eq("id", documentId)
-        .single();
-
-      if (!doc) throw new Error("Document not found");
-
-      const { data: fileData, error: downloadError } = await supabase.storage
-        .from("career-documents")
-        .download(doc.file_path);
-
-      if (downloadError || !fileData) throw new Error("Failed to download file");
-
-      resumeText = await fileData.text();
-    }
-
-    if (!resumeText || resumeText.length < 20) {
-      throw new Error("Resume text is too short to analyze");
-    }
-
-    const userPrompt = targetRole
-      ? `Analyze this resume for the target role: "${targetRole}"\n\nResume:\n${resumeText.slice(0, 8000)}`
-      : `Analyze this resume:\n\n${resumeText.slice(0, 8000)}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
