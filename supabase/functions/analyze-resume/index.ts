@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ANALYSIS_PROMPT = `You are an expert ATS (Applicant Tracking System) analyzer and career coach. Analyze the following resume text and return a structured analysis.
+const ANALYSIS_PROMPT = `You are an expert ATS (Applicant Tracking System) analyzer and career coach. Analyze the provided resume and return a structured analysis.
 
 You MUST respond by calling the "resume_analysis" tool with the results. Do not respond with plain text.
 
