@@ -2,3 +2,15 @@ project_id = "idkrqnvxegzoavpucswj"
 
 [functions.career-chat]
 verify_jwt = false
+
+[functions.analyze-resume]
+verify_jwt = false
+
+[functions.generate-cover-letter]
+verify_jwt = false
+
+[functions.skill-quiz]
+verify_jwt = false
+
+[functions.ingest-document]
+verify_jwt = false
