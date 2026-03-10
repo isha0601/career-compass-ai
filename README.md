@@ -158,6 +158,3 @@ Configure these in Lovable Cloud settings:
 - `PINECONE_INDEX_URL` — Your Pinecone index endpoint
 - `REDIS_URL` — Redis connection string (e.g., Upstash)
 
-## 📄 License
-
-This project is built with [Lovable](https://lovable.dev).
