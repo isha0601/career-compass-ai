@@ -77,16 +77,14 @@ const Index = () => {
             </Button>
             <Button
               size="lg"
-              variant="outline"
-              className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 font-display px-8 text-base"
+              className="bg-teal text-teal-foreground hover:bg-teal/90 font-display font-semibold px-8 text-base"
               onClick={() => navigate("/chat")}
             >
               Try Quick Chat
             </Button>
             <Button
               size="lg"
-              variant="outline"
-              className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 font-display px-8 text-base"
+              className="bg-teal text-teal-foreground hover:bg-teal/90 font-display font-semibold px-8 text-base"
               onClick={() => navigate("/knowledge-base")}
             >
               <BookOpen className="w-4 h-4 mr-2" />
@@ -94,8 +92,7 @@ const Index = () => {
             </Button>
             <Button
               size="lg"
-              variant="outline"
-              className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 font-display px-8 text-base"
+              className="bg-teal text-teal-foreground hover:bg-teal/90 font-display font-semibold px-8 text-base"
               onClick={() => navigate("/resume-analyzer")}
             >
               <FileText className="w-4 h-4 mr-2" />
@@ -103,8 +100,7 @@ const Index = () => {
             </Button>
             <Button
               size="lg"
-              variant="outline"
-              className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 font-display px-8 text-base"
+              className="bg-teal text-teal-foreground hover:bg-teal/90 font-display font-semibold px-8 text-base"
               onClick={() => navigate("/cover-letter")}
             >
               <Briefcase className="w-4 h-4 mr-2" />
@@ -112,8 +108,7 @@ const Index = () => {
             </Button>
             <Button
               size="lg"
-              variant="outline"
-              className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 font-display px-8 text-base"
+              className="bg-teal text-teal-foreground hover:bg-teal/90 font-display font-semibold px-8 text-base"
               onClick={() => navigate("/skill-quiz")}
             >
               <Brain className="w-4 h-4 mr-2" />
@@ -121,8 +116,7 @@ const Index = () => {
             </Button>
             <Button
               size="lg"
-              variant="outline"
-              className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 font-display px-8 text-base"
+              className="bg-teal text-teal-foreground hover:bg-teal/90 font-display font-semibold px-8 text-base"
               onClick={() => navigate("/mock-interview")}
             >
               <Mic className="w-4 h-4 mr-2" />
